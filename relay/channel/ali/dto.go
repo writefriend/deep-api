@@ -1,25 +1,27 @@
 package ali
 
 type AliMessage struct {
-	User string `json:"user"`
-	Bot  string `json:"bot"`
+	Content string `json:"content"`
+	Role    string `json:"role"`
 }
 
 type AliInput struct {
-	Prompt  string       `json:"prompt"`
-	History []AliMessage `json:"history"`
+	Prompt string `json:"prompt,omitempty"`
+	//History []AliMessage `json:"history,omitempty"`
+	Messages []AliMessage `json:"messages"`
 }
 
 type AliParameters struct {
-	TopP         float64 `json:"top_p,omitempty"`
-	TopK         int     `json:"top_k,omitempty"`
-	Seed         uint64  `json:"seed,omitempty"`
-	EnableSearch bool    `json:"enable_search,omitempty"`
+	TopP              float64 `json:"top_p,omitempty"`
+	TopK              int     `json:"top_k,omitempty"`
+	Seed              uint64  `json:"seed,omitempty"`
+	EnableSearch      bool    `json:"enable_search,omitempty"`
+	IncrementalOutput bool    `json:"incremental_output,omitempty"`
 }
 
 type AliChatRequest struct {
 	Model      string        `json:"model"`
-	Input      AliInput      `json:"input"`
+	Input      AliInput      `json:"input,omitempty"`
 	Parameters AliParameters `json:"parameters,omitempty"`
 }
 

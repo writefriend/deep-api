@@ -14,6 +14,7 @@ type GeneralOpenAIRequest struct {
 	MaxTokens        uint            `json:"max_tokens,omitempty"`
 	Temperature      float64         `json:"temperature,omitempty"`
 	TopP             float64         `json:"top_p,omitempty"`
+	TopK             int             `json:"top_k,omitempty"`
 	Stop             any             `json:"stop,omitempty"`
 	N                int             `json:"n,omitempty"`
 	Input            any             `json:"input,omitempty"`
@@ -82,6 +83,14 @@ func (m Message) StringContent() string {
 	return string(m.Content)
 }
 
+func (m Message) IsStringContent() bool {
+	var stringContent string
+	if err := json.Unmarshal(m.Content, &stringContent); err == nil {
+		return true
+	}
+	return false
+}
+
 func (m Message) ParseContent() []MediaMessage {
 	var contentList []MediaMessage
 	var stringContent string
@@ -129,10 +138,4 @@ func (m Message) ParseContent() []MediaMessage {
 	}
 
 	return nil
-}
-
-type Usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
 }
