@@ -180,7 +180,7 @@ func RelaySwapFace(c *gin.Context) *dto.MidjourneyResponse {
 			Description: "quota_not_enough",
 		}
 	}
-	requestURL := c.Request.URL.String()
+	requestURL := getMjRequestPath(c.Request.URL.String())
 	baseURL := c.GetString("base_url")
 	fullRequestURL := fmt.Sprintf("%s%s", baseURL, requestURL)
 	mjResp, _, err := service.DoMidjourneyHttpRequest(c, time.Second*60, fullRequestURL)
@@ -260,30 +260,12 @@ func RelayMidjourneyTaskImageSeed(c *gin.Context) *dto.MidjourneyResponse {
 	c.Set("channel_id", originTask.ChannelId)
 	c.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", channel.Key))
 
-	requestURL := c.Request.URL.String()
+	requestURL := getMjRequestPath(c.Request.URL.String())
 	fullRequestURL := fmt.Sprintf("%s%s", channel.GetBaseURL(), requestURL)
 	midjResponseWithStatus, _, err := service.DoMidjourneyHttpRequest(c, time.Second*30, fullRequestURL)
 	if err != nil {
 		return &midjResponseWithStatus.Response
 	}
-	//defer func(ctx context.Context) {
-	//	err := model.PostConsumeTokenQuota(tokenId, userQuota, quota, 0, true)
-	//	if err != nil {
-	//		common.SysError("error consuming token remain quota: " + err.Error())
-	//	}
-	//	err = model.CacheUpdateUserQuota(userId)
-	//	if err != nil {
-	//		common.SysError("error update user quota cache: " + err.Error())
-	//	}
-	//	if quota != 0 {
-	//		tokenName := c.GetString("token_name")
-	//		logContent := fmt.Sprintf("模型固定价格 %.2f，分组倍率 %.2f，操作 %s", modelPrice, groupRatio, midjRequest.Action)
-	//		model.RecordConsumeLog(ctx, userId, channelId, 0, 0, modelName, tokenName, quota, logContent, tokenId, userQuota, 0, false)
-	//		model.UpdateUserUsedQuotaAndRequestCount(userId, quota)
-	//		channelId := c.GetInt("channel_id")
-	//		model.UpdateChannelUsedQuota(channelId, quota)
-	//	}
-	//}(c.Request.Context())
 	midjResponse := &midjResponseWithStatus.Response
 	c.Writer.WriteHeader(midjResponseWithStatus.StatusCode)
 	respBody, err := json.Marshal(midjResponse)
@@ -458,7 +440,7 @@ func RelayMidjourneySubmit(c *gin.Context, relayMode int) *dto.MidjourneyRespons
 	}
 
 	//baseURL := common.ChannelBaseURLs[channelType]
-	requestURL := c.Request.URL.String()
+	requestURL := getMjRequestPath(c.Request.URL.String())
 
 	baseURL := c.GetString("base_url")
 
@@ -622,4 +604,16 @@ type taskChangeParams struct {
 	ID     string
 	Action string
 	Index  int
+}
+
+func getMjRequestPath(path string) string {
+	requestURL := path
+	if strings.Contains(requestURL, "/mj-") {
+		urls := strings.Split(requestURL, "/mj/")
+		if len(urls) < 2 {
+			return requestURL
+		}
+		requestURL = "/mj/" + urls[1]
+	}
+	return requestURL
 }

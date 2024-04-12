@@ -55,7 +55,8 @@ var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
 
-var EmailDomainRestrictionEnabled = false
+var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
+var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
 var EmailDomainWhitelist = []string{
 	"gmail.com",
 	"163.com",
@@ -75,6 +76,7 @@ var LogConsumeEnabled = true
 
 var SMTPServer = ""
 var SMTPPort = 587
+var SMTPSSLEnabled = false
 var SMTPAccount = ""
 var SMTPFrom = ""
 var SMTPToken = ""
@@ -110,7 +112,7 @@ var IsMasterNode = os.Getenv("NODE_TYPE") != "slave"
 var requestInterval, _ = strconv.Atoi(os.Getenv("POLLING_INTERVAL"))
 var RequestInterval = time.Duration(requestInterval) * time.Second
 
-var SyncFrequency = GetOrDefault("SYNC_FREQUENCY", 10*60) // unit is second
+var SyncFrequency = GetOrDefault("SYNC_FREQUENCY", 60) // unit is second
 
 var BatchUpdateEnabled = false
 var BatchUpdateInterval = GetOrDefault("BATCH_UPDATE_INTERVAL", 5)
@@ -211,6 +213,8 @@ const (
 	ChannelTypeGemini         = 24
 	ChannelTypeMoonshot       = 25
 	ChannelTypeZhipu_v4       = 26
+	ChannelTypePerplexity     = 27
+	ChannelTypeLingYiWanWu    = 31
 )
 
 var ChannelBaseURLs = []string{
@@ -241,4 +245,9 @@ var ChannelBaseURLs = []string{
 	"https://generativelanguage.googleapis.com", //24
 	"https://api.moonshot.cn",                   //25
 	"https://open.bigmodel.cn",                  //26
+	"https://api.perplexity.ai",                 //27
+	"",                                          //28
+	"",                                          //29
+	"",                                          //30
+	"https://api.lingyiwanwu.com",               //31
 }

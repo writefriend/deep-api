@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"one-api/common"
+	"one-api/constant"
 	"one-api/model"
 	"strings"
 
@@ -32,6 +33,7 @@ func GetStatus(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data": gin.H{
+			"version":                  common.Version,
 			"start_time":               common.StartTime,
 			"email_verification":       common.EmailVerificationEnabled,
 			"github_oauth":             common.GitHubOAuthEnabled,
@@ -59,6 +61,7 @@ func GetStatus(c *gin.Context) {
 			"data_export_default_time": common.DataExportDefaultTime,
 			"default_collapse_sidebar": common.DefaultCollapseSidebar,
 			"enable_online_topup":      common.PayAddress != "" && common.EpayId != "" && common.EpayKey != "",
+			"mj_notify_enabled":        constant.MjNotifyEnabled,
 		},
 	})
 	return
@@ -117,10 +120,20 @@ func SendEmailVerification(c *gin.Context) {
 		})
 		return
 	}
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "无效的邮箱地址",
+		})
+		return
+	}
+	localPart := parts[0]
+	domainPart := parts[1]
 	if common.EmailDomainRestrictionEnabled {
 		allowed := false
 		for _, domain := range common.EmailDomainWhitelist {
-			if strings.HasSuffix(email, "@"+domain) {
+			if domainPart == domain {
 				allowed = true
 				break
 			}
@@ -128,11 +141,22 @@ func SendEmailVerification(c *gin.Context) {
 		if !allowed {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员启用了邮箱域名白名单，您的邮箱地址的域名不在白名单中",
+				"message": "The administrator has enabled the email domain name whitelist, and your email address is not allowed due to special symbols or it's not in the whitelist.",
 			})
 			return
 		}
 	}
+	if common.EmailAliasRestrictionEnabled {
+		containsSpecialSymbols := strings.Contains(localPart, "+") || strings.Count(localPart, ".") > 1
+		if containsSpecialSymbols {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "管理员已启用邮箱地址别名限制，您的邮箱地址由于包含特殊符号而被拒绝。",
+			})
+			return
+		}
+	}
+
 	if model.IsEmailAlreadyTaken(email) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
