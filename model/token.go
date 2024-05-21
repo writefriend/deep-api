@@ -11,7 +11,7 @@ import (
 
 type Token struct {
 	Id                 int            `json:"id"`
-	UserId             int            `json:"user_id"`
+	UserId             int            `json:"user_id" gorm:"index"`
 	Key                string         `json:"key" gorm:"type:char(48);uniqueIndex"`
 	Status             int            `json:"status" gorm:"default:1"`
 	Name               string         `json:"name" gorm:"index" `
@@ -102,6 +102,11 @@ func GetTokenById(id int) (*Token, error) {
 	token := Token{Id: id}
 	var err error = nil
 	err = DB.First(&token, "id = ?", id).Error
+	if err != nil {
+		if common.RedisEnabled {
+			go cacheSetToken(&token)
+		}
+	}
 	return &token, err
 }
 

@@ -22,11 +22,17 @@ import {
   Checkbox,
   Banner,
 } from '@douyinfe/semi-ui';
+import { Divider } from 'semantic-ui-react';
+import { getChannelModels, loadChannelModels } from '../../components/utils.js';
 
 const MODEL_MAPPING_EXAMPLE = {
   'gpt-3.5-turbo-0301': 'gpt-3.5-turbo',
   'gpt-4-0314': 'gpt-4',
   'gpt-4-32k-0314': 'gpt-4-32k',
+};
+
+const STATUS_CODE_MAPPING_EXAMPLE = {
+  400: '500',
 };
 
 function type2secretPrompt(type) {
@@ -40,6 +46,8 @@ function type2secretPrompt(type) {
       return '按照如下格式输入：APIKey-AppId，例如：fastgpt-0sp2gtvfdgyi4k30jwlgwf1i-64f335d84283f05518e9e041';
     case 23:
       return '按照如下格式输入：AppId|SecretId|SecretKey';
+    case 33:
+      return '按照如下格式输入：Ak|Sk|Region';
     default:
       return '请输入渠道对应的鉴权密钥';
   }
@@ -58,9 +66,11 @@ const EditChannel = (props) => {
     type: 1,
     key: '',
     openai_organization: '',
+    max_input_tokens: 0,
     base_url: '',
     other: '',
     model_mapping: '',
+    status_code_mapping: '',
     models: [],
     auto_ban: 1,
     test_model: '',
@@ -78,79 +88,9 @@ const EditChannel = (props) => {
   const [customModel, setCustomModel] = useState('');
   const handleInputChange = (name, value) => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
-    if (name === 'type' && inputs.models.length === 0) {
+    if (name === 'type') {
       let localModels = [];
       switch (value) {
-        case 14:
-          localModels = [
-            'claude-instant-1.2',
-            'claude-2',
-            'claude-2.0',
-            'claude-2.1',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
-            'claude-3-haiku-20240307',
-          ];
-          break;
-        case 11:
-          localModels = ['PaLM-2'];
-          break;
-        case 15:
-          localModels = [
-            'ERNIE-Bot',
-            'ERNIE-Bot-turbo',
-            'ERNIE-Bot-4',
-            'Embedding-V1',
-          ];
-          break;
-        case 17:
-          localModels = [
-            'qwen-turbo',
-            'qwen-plus',
-            'qwen-max',
-            'qwen-max-longcontext',
-            'text-embedding-v1',
-          ];
-          break;
-        case 16:
-          localModels = ['chatglm_pro', 'chatglm_std', 'chatglm_lite'];
-          break;
-        case 18:
-          localModels = [
-            'SparkDesk',
-            'SparkDesk-v1.1',
-            'SparkDesk-v2.1',
-            'SparkDesk-v3.1',
-            'SparkDesk-v3.5',
-          ];
-          break;
-        case 19:
-          localModels = [
-            '360GPT_S2_V9',
-            'embedding-bert-512-v1',
-            'embedding_s1_v1',
-            'semantic_similarity_s1_v1',
-          ];
-          break;
-        case 23:
-          localModels = ['hunyuan'];
-          break;
-        case 24:
-          localModels = ['gemini-pro', 'gemini-pro-vision'];
-          break;
-        case 25:
-          localModels = [
-            'moonshot-v1-8k',
-            'moonshot-v1-32k',
-            'moonshot-v1-128k',
-          ];
-          break;
-        case 26:
-          localModels = ['glm-4', 'glm-4v', 'glm-3-turbo'];
-          break;
-        case 31:
-          localModels = ['yi-34b-chat-0205', 'yi-34b-chat-200k', 'yi-vl-plus'];
-          break;
         case 2:
           localModels = [
             'mj_imagine',
@@ -159,6 +99,7 @@ const EditChannel = (props) => {
             'mj_blend',
             'mj_upscale',
             'mj_describe',
+            'mj_uploads',
           ];
           break;
         case 5:
@@ -178,10 +119,17 @@ const EditChannel = (props) => {
             'mj_high_variation',
             'mj_low_variation',
             'mj_pan',
+            'mj_uploads',
           ];
           break;
+        default:
+          localModels = getChannelModels(value);
+          break;
       }
-      setInputs((inputs) => ({ ...inputs, models: localModels }));
+      if (inputs.models.length === 0) {
+        setInputs((inputs) => ({ ...inputs, models: localModels }));
+      }
+      setBasicModels(localModels);
     }
     //setAutoBan
   };
@@ -217,6 +165,7 @@ const EditChannel = (props) => {
       } else {
         setAutoBan(true);
       }
+      setBasicModels(getChannelModels(data.type));
       // console.log(data);
     } else {
       showError(message);
@@ -285,6 +234,9 @@ const EditChannel = (props) => {
       loadChannel().then(() => {});
     } else {
       setInputs(originInputs);
+      let localModels = getChannelModels(inputs.type);
+      setBasicModels(localModels);
+      setInputs((inputs) => ({ ...inputs, models: localModels }));
     }
   }, [props.editingChannel.id]);
 
@@ -346,23 +298,38 @@ const EditChannel = (props) => {
     }
   };
 
-  const addCustomModel = () => {
+  const addCustomModels = () => {
     if (customModel.trim() === '') return;
-    if (inputs.models.includes(customModel)) return showError('该模型已存在！');
+    // 使用逗号分隔字符串，然后去除每个模型名称前后的空格
+    const modelArray = customModel.split(',').map(model => model.trim());
+    
     let localModels = [...inputs.models];
-    localModels.push(customModel);
-    let localModelOptions = [];
-    localModelOptions.push({
-      key: customModel,
-      text: customModel,
-      value: customModel,
+    let localModelOptions = [...modelOptions];
+    let hasError = false;
+
+    modelArray.forEach(model => {
+      // 检查模型是否已存在，且模型名称非空
+      if (model && !localModels.includes(model)) {
+        localModels.push(model); // 添加到模型列表
+        localModelOptions.push({ // 添加到下拉选项
+          key: model,
+          text: model,
+          value: model,
+        });
+      } else if (model) {
+        showError('某些模型已存在！');
+        hasError = true;
+      }
     });
-    setModelOptions((modelOptions) => {
-      return [...modelOptions, ...localModelOptions];
-    });
+
+    if (hasError) return; // 如果有错误则终止操作
+
+    // 更新状态值
+    setModelOptions(localModelOptions);
     setCustomModel('');
     handleInputChange('models', localModels);
   };
+
 
   return (
     <>
@@ -569,7 +536,7 @@ const EditChannel = (props) => {
                   handleInputChange('models', basicModels);
                 }}
               >
-                填入基础模型
+                填入相关模型
               </Button>
               <Button
                 type='secondary'
@@ -590,7 +557,7 @@ const EditChannel = (props) => {
             </Space>
             <Input
               addonAfter={
-                <Button type='primary' onClick={addCustomModel}>
+                <Button type='primary' onClick={addCustomModels}>
                   填入
                 </Button>
               }
@@ -658,18 +625,22 @@ const EditChannel = (props) => {
               autoComplete='new-password'
             />
           )}
-          <div style={{ marginTop: 10 }}>
-            <Typography.Text strong>组织：</Typography.Text>
-          </div>
-          <Input
-            label='组织，可选，不填则为默认组织'
-            name='openai_organization'
-            placeholder='请输入组织org-xxx'
-            onChange={(value) => {
-              handleInputChange('openai_organization', value);
-            }}
-            value={inputs.openai_organization}
-          />
+          {inputs.type === 1 && (
+            <>
+              <div style={{ marginTop: 10 }}>
+                <Typography.Text strong>组织：</Typography.Text>
+              </div>
+              <Input
+                label='组织，可选，不填则为默认组织'
+                name='openai_organization'
+                placeholder='请输入组织org-xxx'
+                onChange={(value) => {
+                  handleInputChange('openai_organization', value);
+                }}
+                value={inputs.openai_organization}
+              />
+            </>
+          )}
           <div style={{ marginTop: 10 }}>
             <Typography.Text strong>默认测试模型：</Typography.Text>
           </div>
@@ -745,6 +716,50 @@ const EditChannel = (props) => {
               />
             </>
           )}
+          <div style={{ marginTop: 10 }}>
+            <Typography.Text strong>
+              状态码复写（仅影响本地判断，不修改返回到上游的状态码）：
+            </Typography.Text>
+          </div>
+          <TextArea
+            placeholder={`此项可选，用于复写返回的状态码，比如将claude渠道的400错误复写为500（用于重试），请勿滥用该功能，例如：\n${JSON.stringify(STATUS_CODE_MAPPING_EXAMPLE, null, 2)}`}
+            name='status_code_mapping'
+            onChange={(value) => {
+              handleInputChange('status_code_mapping', value);
+            }}
+            autosize
+            value={inputs.status_code_mapping}
+            autoComplete='new-password'
+          />
+          <Typography.Text
+            style={{
+              color: 'rgba(var(--semi-blue-5), 1)',
+              userSelect: 'none',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              handleInputChange(
+                'status_code_mapping',
+                JSON.stringify(STATUS_CODE_MAPPING_EXAMPLE, null, 2),
+              );
+            }}
+          >
+            填入模板
+          </Typography.Text>
+          {/*<div style={{ marginTop: 10 }}>*/}
+          {/*  <Typography.Text strong>*/}
+          {/*    最大请求token（0表示不限制）：*/}
+          {/*  </Typography.Text>*/}
+          {/*</div>*/}
+          {/*<Input*/}
+          {/*  label='最大请求token'*/}
+          {/*  name='max_input_tokens'*/}
+          {/*  placeholder='默认为0，表示不限制'*/}
+          {/*  onChange={(value) => {*/}
+          {/*    handleInputChange('max_input_tokens', value);*/}
+          {/*  }}*/}
+          {/*  value={inputs.max_input_tokens}*/}
+          {/*/>*/}
         </Spin>
       </SideSheet>
     </>

@@ -46,8 +46,8 @@ func GetStatus(c *gin.Context) {
 			"wechat_qrcode":            common.WeChatAccountQRCodeImageURL,
 			"wechat_login":             common.WeChatAuthEnabled,
 			"server_address":           common.ServerAddress,
-			"price":                    common.Price,
-			"min_topup":                common.MinTopUp,
+			"price":                    constant.Price,
+			"min_topup":                constant.MinTopUp,
 			"turnstile_check":          common.TurnstileCheckEnabled,
 			"turnstile_site_key":       common.TurnstileSiteKey,
 			"top_up_link":              common.TopUpLink,
@@ -60,7 +60,7 @@ func GetStatus(c *gin.Context) {
 			"enable_data_export":       common.DataExportEnabled,
 			"data_export_default_time": common.DataExportDefaultTime,
 			"default_collapse_sidebar": common.DefaultCollapseSidebar,
-			"enable_online_topup":      common.PayAddress != "" && common.EpayId != "" && common.EpayKey != "",
+			"enable_online_topup":      constant.PayAddress != "" && constant.EpayId != "" && constant.EpayKey != "",
 			"mj_notify_enabled":        constant.MjNotifyEnabled,
 		},
 	})
@@ -147,7 +147,7 @@ func SendEmailVerification(c *gin.Context) {
 		}
 	}
 	if common.EmailAliasRestrictionEnabled {
-		containsSpecialSymbols := strings.Contains(localPart, "+") || strings.Count(localPart, ".") > 1
+		containsSpecialSymbols := strings.Contains(localPart, "+") || strings.Contains(localPart, ".")
 		if containsSpecialSymbols {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,

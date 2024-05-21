@@ -3,8 +3,10 @@ package relay
 import (
 	"one-api/relay/channel"
 	"one-api/relay/channel/ali"
+	"one-api/relay/channel/aws"
 	"one-api/relay/channel/baidu"
 	"one-api/relay/channel/claude"
+	"one-api/relay/channel/cohere"
 	"one-api/relay/channel/gemini"
 	"one-api/relay/channel/ollama"
 	"one-api/relay/channel/openai"
@@ -39,12 +41,16 @@ func GetAdaptor(apiType int) channel.Adaptor {
 		return &xunfei.Adaptor{}
 	case constant.APITypeZhipu:
 		return &zhipu.Adaptor{}
-	case constant.APITypeZhipu_v4:
+	case constant.APITypeZhipuV4:
 		return &zhipu_4v.Adaptor{}
 	case constant.APITypeOllama:
 		return &ollama.Adaptor{}
 	case constant.APITypePerplexity:
 		return &perplexity.Adaptor{}
+	case constant.APITypeAws:
+		return &aws.Adaptor{}
+	case constant.APITypeCohere:
+		return &cohere.Adaptor{}
 	}
 	return nil
 }
